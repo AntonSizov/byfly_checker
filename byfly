@@ -1,0 +1,42 @@
+#!/bin/sh
+
+L='' # login
+P='' # password
+O='10000' # alert when cash is less than
+B="Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)"
+K='./.byfly_cookies'
+RL='https://issa.beltelecom.by/cgi-bin/cgi.exe?function='
+R1=$RL'is_newlog';R2=$RL'is_login';R3=$RL'is_account';R4=$RL'regobpldone'
+CU=`which curl`; if [ ! "$CU" ]; then echo setup curl; exit; fi
+IC=`which iconv`; if [ ! "$IC" ]; then echo setup iconv; exit; fi
+NS=`which notify-send`; if [ ! "$NS" ]; then echo setup notify-send; exit; fi
+ROOT_PATH=$(cd $(dirname $0) && pwd);
+
+echo Logging to billing...
+$CU -c $K -d "mobnum=$L&Password=$P&Lang=2" -s --user-agent "$B" \
+--referer "$R1" $R2 > /dev/null
+
+if [ ! -f $K ];
+   then
+     echo 'error:Cookies were not created.' > $ROOT_PATH/log
+     exit
+fi
+
+echo Looking for cash...
+
+CASH=`$CU -b $K -c $K -s -m 9 --user-agent "$B" --referer "$R2" $R3 \
+| $IC -f CP1251 -t UTF-8 | grep -m 1 -e '[-0-9]\+&nbsp;Бел.рубль' \
+| sed -e 's/<td class=light width="50%">&nbsp;//' | sed -e 's/&nbsp;Бел.рубль//' \
+| sed -e 's/[^0-9]//'`
+
+echo "cash is: $CASH"
+
+if [ $CASH -lt $O ];
+	then
+		echo Its time to pay. Account is: $CASH
+		$NS -t 10000 -i $ROOT_PATH/icons/warnings.png "ByFly" "It's time to pay. You account is: $CASH"
+fi
+
+if [ -f $K ];
+	then unlink $K
+fi

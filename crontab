@@ -1,0 +1,5 @@
+# crontab -u username ./crontab
+SHELL=/bin/sh
+
+# each minute
+*/1 * * * * export DISPLAY=:0 && $HOME/byfly_checker/byfly >> $HOME/byfly_checker/log 2>&1
